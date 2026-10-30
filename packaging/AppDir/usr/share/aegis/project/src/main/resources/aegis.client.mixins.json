@@ -1,0 +1,7 @@
+{
+  "required": false,
+  "package": "com.aegis.client.mixin",
+  "compatibilityLevel": "JAVA_25",
+  "client": ["MouseMixin"],
+  "injectors": { "defaultRequire": 0 }
+}

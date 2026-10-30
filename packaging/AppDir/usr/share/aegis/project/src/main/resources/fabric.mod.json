@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "id": "aegis",
+  "version": "${version}",
+  "name": "Aegis Client",
+  "description": "A configurable PvP information, visual, defensive and training client for Minecraft Java.",
+  "authors": ["Aegis Client"],
+  "license": "MIT",
+  "environment": "client",
+  "entrypoints": { "client": ["com.aegis.client.AegisClient"] },
+  "mixins": ["aegis.client.mixins.json"],
+  "depends": {
+    "fabricloader": ">=0.19.2",
+    "minecraft": "~26.1.2",
+    "java": ">=25",
+    "fabric-api": ">=0.155.3+26.1.2"
+  }
+}

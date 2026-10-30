@@ -1,0 +1,98 @@
+name: Build Aegis Client JAR
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: aegis-build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Compile Minecraft 26.1.2 Fabric client
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v7
+
+      - name: Install JDK 25
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: gradle
+
+      - name: Set up Gradle 9.8.2
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: '9.8.2'
+
+      # Normalize the root settings file in CI as a guard against an older
+      # settings.gradle being present in the GitHub repository. Fabric Loom
+      # adds LoomLocalRemappedMods to project.repositories at plugin apply time.
+      - name: Enforce Fabric Loom-compatible repository mode
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f build.gradle || { echo 'ERROR: build.gradle is missing from the repository root.'; exit 1; }
+          cat > settings.gradle <<'GRADLE'
+          pluginManagement {
+              repositories {
+                  maven { url = 'https://maven.fabricmc.net/' }
+                  gradlePluginPortal()
+                  mavenCentral()
+              }
+          }
+
+          dependencyResolutionManagement {
+              repositoriesMode.set(RepositoriesMode.PREFER_PROJECT)
+          }
+
+          rootProject.name = 'aegis-client'
+          GRADLE
+
+          echo '--- Active root settings.gradle ---'
+          cat settings.gradle
+
+          if grep -Eq 'RepositoriesMode\.(PREFER_SETTINGS|FAIL_ON_PROJECT_REPOS)' settings.gradle; then
+            echo 'ERROR: incompatible Gradle repository mode remains in root settings.gradle.'
+            exit 1
+          fi
+
+          echo '--- All settings.gradle files in checkout ---'
+          find . -type f \( -name settings.gradle -o -name settings.gradle.kts \) \
+            -not -path './.git/*' -print
+
+      - name: Show build tool versions
+        run: |
+          java --version
+          gradle --version
+
+      - name: Compile and package the mod
+        run: gradle --no-daemon --stacktrace clean build
+
+      - name: Verify the JAR exists
+        shell: bash
+        run: |
+          set -euo pipefail
+          JAR='build/libs/aegis-client-2.0.0.jar'
+          test -s "$JAR"
+          echo "Built JAR: $JAR"
+          ls -lh "$JAR"
+          jar tf "$JAR" | sed -n '1,80p'
+
+      - name: Upload the compiled JAR
+        uses: actions/upload-artifact@v7
+        with:
+          name: AegisClient-2.0.0-Minecraft-26.1.2
+          path: build/libs/aegis-client-2.0.0.jar
+          if-no-files-found: error
+          retention-days: 30

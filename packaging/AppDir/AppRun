@@ -1,0 +1,24 @@
+#!/bin/sh
+set -eu
+APPDIR="$(dirname "$(readlink -f "$0")")"
+XDG_DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}"
+AEGIS_HOME="$XDG_DATA_HOME/aegis-client"
+SOURCE_DIR="$AEGIS_HOME/source-2.0.0"
+mkdir -p "$AEGIS_HOME"
+if [ ! -f "$SOURCE_DIR/build.gradle" ]; then
+    mkdir -p "$SOURCE_DIR"
+    cp -a "$APPDIR/usr/share/aegis/project/." "$SOURCE_DIR/"
+fi
+export AEGIS_PROJECT_DIR="$SOURCE_DIR"
+if [ -x "$APPDIR/usr/bin/aegis-launcher" ]; then
+    exec "$APPDIR/usr/bin/aegis-launcher" "$@"
+fi
+if ! command -v python3 >/dev/null 2>&1; then
+    echo "Aegis Launcher runtime is missing. This AppDir was packaged without its bundled GUI binary." >&2
+    exit 1
+fi
+if ! python3 -c 'import tkinter' >/dev/null 2>&1; then
+    echo "Aegis Launcher requires Python 3 with Tk support." >&2
+    exit 1
+fi
+exec python3 "$APPDIR/usr/share/aegis/launcher/aegis_launcher.py" "$@"

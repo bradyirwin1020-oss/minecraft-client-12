@@ -1,0 +1,16 @@
+pluginManagement {
+    repositories {
+        maven { url = 'https://maven.fabricmc.net/' }
+        gradlePluginPortal()
+        mavenCentral()
+    }
+}
+
+// Fabric Loom registers LoomLocalRemappedMods in the project repositories.
+// PREFER_PROJECT allows Loom to register that repository; PREFER_SETTINGS and
+// FAIL_ON_PROJECT_REPOS are incompatible with this plugin behavior.
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.PREFER_PROJECT)
+}
+
+rootProject.name = 'aegis-client'

@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Aegis Client Launcher
+Comment=Launch Minecraft Java with the Aegis client
+Exec=AppRun
+Icon=aegis
+Categories=Game;
+Terminal=false
