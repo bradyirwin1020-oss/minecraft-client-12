@@ -1,48 +1,75 @@
-GRADLE_SETTINGS
+name: Aegis Client Build
 
-          echo 'Effective settings.gradle:'
-          cat settings.gradle
+on:
+  push:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
 
-          if grep -Eq 'RepositoriesMode\.(PREFER_SETTINGS|FAIL_ON_PROJECT_REPOS)' settings.gradle; then
-            echo 'ERROR: incompatible Gradle repository mode is still present.' >&2
-            exit 1
-          fi
+jobs:
+  build:
+    name: Build Minecraft 26.1.2 Fabric mod
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
 
-      - name: Show build tool versions
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v7
+
+      - name: Set up Java 25
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '25'
+
+      - name: Set up Gradle 9.8.2
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: '9.8.2'
+
+      - name: Prepare settings for Fabric Loom
         shell: bash
         run: |
           set -euo pipefail
-          java --version
-          gradle --version
+          test -f build.gradle
+          cat > settings.gradle <<'GRADLE_SETTINGS'
+          pluginManagement {
+              repositories {
+                  maven { url = 'https://maven.fabricmc.net/' }
+                  gradlePluginPortal()
+                  mavenCentral()
+              }
+          }
 
-      - name: Build the Fabric mod
+          rootProject.name = 'aegis-client'
+          GRADLE_SETTINGS
+          echo 'Gradle settings prepared:'
+          cat settings.gradle
+
+      - name: Build Aegis
         shell: bash
         run: gradle --no-daemon --stacktrace clean build
 
-      - name: Verify the compiled mod JAR
-        id: verify
+      - name: Verify the mod JAR
         shell: bash
         run: |
           set -euo pipefail
-
-          JAR="$(find build/libs -maxdepth 1 -type f -name '*.jar' ! -name '*-sources.jar' ! -name '*-javadoc.jar' | sort | head -n 1)"
-          if [[ -z "$JAR" || ! -s "$JAR" ]]; then
-            echo 'ERROR: no compiled mod JAR was produced.' >&2
-            echo 'Build output files:'
-            find build -maxdepth 4 -type f -print | sort || true
+          JAR="$(find build/libs -maxdepth 1 -type f -name 'aegis-client-*.jar' ! -name '*-sources.jar' ! -name '*-javadoc.jar' -print -quit)"
+          if [ -z "$JAR" ]; then
+            echo 'ERROR: No Aegis mod JAR was created.' >&2
+            find build -maxdepth 4 -type f -print || true
             exit 1
           fi
-
           jar tf "$JAR" | grep -Fx 'fabric.mod.json'
           jar tf "$JAR" | grep -Fx 'com/aegis/client/AegisClient.class'
-          echo "jar_path=$JAR" >> "$GITHUB_OUTPUT"
           echo "Verified JAR: $JAR"
           ls -lh "$JAR"
 
-      - name: Upload compiled mod JAR
+      - name: Upload the built JAR
         uses: actions/upload-artifact@v7
         with:
           name: AegisClient-Minecraft-26.1.2
-          path: ${{ steps.verify.outputs.jar_path }}
+          path: build/libs/aegis-client-2.0.0.jar
           if-no-files-found: error
           retention-days: 30
